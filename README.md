@@ -1,0 +1,2 @@
+# pollution
+Erlang AGH project
