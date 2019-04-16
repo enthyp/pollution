@@ -15,12 +15,16 @@
 %% API
 -export([start/0, stop/0]).
 -export([addStation/2, addValue/4, removeValue/3, getOneValue/3, getStationMean/2, getDailyMean/2, getPredictedIndex/2]).
+-export([init/0, crash/0]).
 
 start() ->
   register(pollutionServer, spawn(fun init/0)).
 
 stop() ->
   call(stop).
+
+crash() ->
+  call(crash).
 
 % public API
 call(Message) ->
@@ -69,6 +73,9 @@ loop(Monitor) ->
       getDailyMeanIn(Pid, Monitor, Type, Date);
     {request, Pid, {getPredictedIndex, {Lat, Lon}, DateTime}} ->
       getPredictedIndexIn(Pid, Monitor, {Lat, Lon}, DateTime);
+    {request, Pid, crash} ->
+      Pid ! {reply, ok},
+      1 / 0;
     {request, Pid, stop} ->
       Pid ! {reply, ok}
   end.
