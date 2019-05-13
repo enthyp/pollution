@@ -12,6 +12,7 @@
 %% API
 -export([createMonitor/0, addStation/3, addValue/5, removeValue/4, getOneValue/4, getStationMean/3, getDailyMean/3]).
 -export([getPredictedIndex/3]).
+-export([getValueFromStation/3, getStation/2]).
 
 -record(station, {typeDate2meas=#{}}).
 -record(monitor, {coords2name=#{}, name2station=#{}}).

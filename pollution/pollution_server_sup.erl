@@ -10,10 +10,13 @@
 -author("blob").
 
 %% API
--export([start/0]).
+-export([start/0, stop/0]).
 
 start() ->
   register(supervisor, spawn(fun supervise/0)).
+
+stop() ->
+  supervisor ! stop.
 
 supervise() ->
   process_flag(trap_exit, true),
