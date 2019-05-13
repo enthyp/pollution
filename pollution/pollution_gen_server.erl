@@ -10,9 +10,12 @@
 -author("blob").
 
 %% API
--export([start/0, stop/0, addStation/2, addValue/4, getOneValue/3, crash/0]).
+-export([start/0, stop/0, crash/0]).
+-export([addStation/2, addValue/4, removeValue/3, getOneValue/3, getStationMean/2, getDailyMean/2, getPredictedIndex/2]).
 -export([init/1, handle_cast/2, handle_call/3, terminate/2]).
 -behavior(gen_server).
+
+%%% USER INTERFACE
 
 start() ->
   gen_server:start_link(
@@ -34,14 +37,34 @@ addValue({Lat, Lon}, DateTime, Type, Value) ->
 addValue(Name, DateTime, Type, Value) ->
   gen_server:call(pollution_gen_server, {addValue, Name, DateTime, Type, Value}).
 
+removeValue({Lat, Lon}, DateTime, Type) ->
+  gen_server:call(pollution_gen_server, {removeValue, {Lat, Lon}, DateTime, Type});
+
+removeValue(Name, DateTime, Type) ->
+  gen_server:call(pollution_gen_server, {removeValue, Name, DateTime, Type}).
+
 getOneValue({Lat, Lon}, DateTime, Type) ->
   gen_server:call(pollution_gen_server, {getOneValue, {Lat, Lon}, DateTime, Type});
 
 getOneValue(Name, DateTime, Type) ->
   gen_server:call(pollution_gen_server, {getOneValue, Name, DateTime, Type}).
 
+getStationMean({Lat, Lon}, Type) ->
+  gen_server:call(pollution_gen_server, {getStationMean, {Lat, Lon}, Type});
+
+getStationMean(Name, Type) ->
+  gen_server:call(pollution_gen_server, {getStationMean, Name, Type}).
+
+getDailyMean(Type, Date) ->
+  gen_server:call(pollution_gen_server, {getDailyMean, Type, Date}).
+
+getPredictedIndex({Lat, Lon}, DateTime) ->
+  gen_server:call(pollution_gen_server, {getPredictedIndex, {Lat, Lon}, DateTime}).
+
 crash() ->
   gen_server:cast(pollution_gen_server, crash).
+
+%%% CALLBACKS
 
 init(_) ->
   case ets:lookup(pollution_gen_sup_server, 1) of
@@ -88,6 +111,22 @@ handle_call_({addValue, Name, DateTime, Type, Value}, _From, Monitor) ->
       {reply, ok, NMonitor}
   end;
 
+handle_call_({removeValue, {Lat, Lon}, DateTime, Type}, _From, Monitor) ->
+  case pollution:removeValue(Monitor, {Lat, Lon}, DateTime, Type) of
+    badcoord ->
+      {reply, badcoord, Monitor};
+    NMonitor ->
+      {reply, ok, NMonitor}
+  end;
+
+handle_call_({removeValue, Name, DateTime, Type}, _From, Monitor) ->
+  case pollution:removeValue(Monitor, Name, DateTime, Type) of
+    badname ->
+      {reply, badname, Monitor};
+    NMonitor ->
+      {reply, ok, NMonitor}
+  end;
+
 handle_call_({getOneValue, {Lat, Lon}, DateTime, Type}, _From, Monitor) ->
   case pollution:getStation(Monitor, {Lat, Lon}) of
     badcoord ->
@@ -102,7 +141,23 @@ handle_call_({getOneValue, Name, DateTime, Type}, _From, Monitor) ->
       {reply, badname, Monitor};
     Station ->
       {reply, pollution:getValueFromStation(Station, DateTime, Type), Monitor}
-  end.
+  end;
+
+handle_call_({getStationMean, {Lat, Lon}, Type}, _From, Monitor) ->
+  Reply = pollution:getStationMean(Monitor, {Lat, Lon}, Type),
+  {reply, Reply, Monitor};
+
+handle_call_({getStationMean, Name, Type}, _From, Monitor) ->
+  Reply = pollution:getStationMean(Monitor, Name, Type),
+  {reply, Reply, Monitor};
+
+handle_call_({getDailyMean, Type, Date}, _From, Monitor) ->
+  Reply = pollution:getDailyMean(Monitor, Type, Date),
+  {reply, Reply, Monitor};
+
+handle_call_({getPredictedIndex, {Lat, Lon}, DateTime}, _From, Monitor) ->
+  Reply = pollution:getPredictedIndex(Monitor, {Lat, Lon}, DateTime),
+  {reply, Reply, Monitor}.
 
 handle_cast(Message, Monitor) ->
   {noreply, NMonitor} = handle_cast_(Message, Monitor),
@@ -117,4 +172,4 @@ handle_cast_(stop, Monitor) ->
   {stop, normal, Monitor}.
 
 terminate(Reason, _) ->
-  ok.
+  Reason.
